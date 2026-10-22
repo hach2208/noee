@@ -61,6 +61,7 @@ export function montageCommun() {
           <li><a href="mailto:${esc(M.email)}">${esc(M.email)}</a></li>
           <li><a href="https://www.instagram.com/${esc(M.instagram)}/" rel="noopener">Instagram</a></li>
           <li><a href="/installer/">Installer l’application</a></li>
+          <li><a href="/maj/">Mettre à jour l’application</a></li>
           <li><a href="/mentions-legales/">Mentions légales et confidentialité</a></li>
         </ul>
       </div>
@@ -77,7 +78,14 @@ export function montageCommun() {
   document.body.append(barre);
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register(new URL('../../sw.js', import.meta.url)).catch(() => {});
+    // Une nouvelle version prend la main : on recharge une fois pour l'afficher
+    const avait = Boolean(navigator.serviceWorker.controller);
+    let recharge = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (avait && !recharge) { recharge = true; location.reload(); }
+    });
+    navigator.serviceWorker.register(new URL('../../sw.js', import.meta.url), { updateViaCache: 'none' })
+      .then((r) => r.update()).catch(() => {});
   }
 }
 

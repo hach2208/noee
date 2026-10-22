@@ -12,7 +12,7 @@ let BASE = process.env.NOEE_BASE || '/';
 if (!BASE.startsWith('/')) BASE = `/${BASE}`;
 if (!BASE.endsWith('/')) BASE += '/';
 
-const RACINES = ['assets', 'vendor', 'data', 'vendre', 'division', 'biens', 'communes', 'admin', 'installer', 'mentions-legales', 'icons', 'favicon\\.svg', 'manifest\\.webmanifest', 'sw\\.js', 'sitemap\\.xml'];
+const RACINES = ['assets', 'vendor', 'data', 'vendre', 'division', 'biens', 'communes', 'admin', 'installer', 'maj', 'mentions-legales', 'icons', 'favicon\\.svg', 'manifest\\.webmanifest', 'sw\\.js', 'sitemap\\.xml'];
 const re = new RegExp(`(["'\`(=])\\/(${RACINES.join('|')})`, 'g');
 
 fs.rmSync(OUT, { recursive: true, force: true });

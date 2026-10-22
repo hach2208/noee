@@ -1,8 +1,8 @@
 // Noéé : service worker. L'interface marche hors ligne, les données restent à jour.
-const VERSION = 'noee-v4';
+const VERSION = 'noee-v5';
 const BASE = new URL('./', self.location).pathname;
 const COQUILLE = [
-  '', 'vendre/', 'division/', 'admin/', 'installer/',
+  '', 'vendre/', 'division/', 'admin/', 'installer/', 'maj/',
   'assets/css/noee.css',
   'assets/js/config.js', 'assets/js/ui.js', 'assets/js/api.js', 'assets/js/dvf-core.js', 'assets/js/estimate.js',
   'assets/js/division-calc.js', 'assets/js/croquis.js', 'assets/js/programme.js', 'assets/js/leads.js', 'assets/js/page-vendre.js', 'assets/js/page-division.js',
@@ -27,9 +27,9 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(caches.match(req).then((r) => r || fetch(req).then((res) => { const cp = res.clone(); caches.open(VERSION).then((c) => c.put(req, cp)); return res; })));
     return;
   }
-  // Pages, scripts et données : réseau d'abord, cache si hors ligne
+  // Pages, scripts et données : réseau d'abord (sans cache HTTP périmé), cache si hors ligne
   e.respondWith(
-    fetch(req).then((res) => {
+    fetch(req, { cache: 'no-cache' }).then((res) => {
       if (res.ok) { const cp = res.clone(); caches.open(VERSION).then((c) => c.put(req, cp)); }
       return res;
     }).catch(() => caches.match(req).then((r) => r || caches.match(BASE)))
