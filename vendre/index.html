@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Estimer et vendre son bien sur la côte landaise | Noéé</title>
+<meta name="description" content="Estimez votre maison, appartement ou terrain d’après les ventes notariées autour de chez vous. Résultat immédiat, gratuit, sans inscription.">
+<meta name="theme-color" content="#0e3b43">
+<link rel="icon" href="/noee/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/noee/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/noee/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Noéé">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="stylesheet" href="/noee/vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="/noee/assets/css/noee.css">
+</head>
+<body data-page="vendre">
+<main id="contenu">
+  <div class="wrap" style="padding-top:clamp(28px,5vw,56px)">
+    <h1 style="max-width:16ch">Le prix de votre bien, lu dans les ventes de votre rue.</h1>
+    <p class="lead">Nous comparons votre bien aux ventes signées chez le notaire autour de l’adresse, puis nous corrigeons selon son état et ses atouts. Deux minutes, sans création de compte.</p>
+  </div>
+
+  <div class="wrap outil-page" id="estimation">
+    <form class="panneau" id="assistant" novalidate>
+      <div class="progression" aria-hidden="true">
+        <div class="barre"><span id="prog" style="width:14%"></span></div>
+        <span class="num" id="prog-num">Étape 1 sur 7</span>
+      </div>
+
+      <!-- 1. Adresse -->
+      <fieldset class="etape" data-etape="1" style="border:0;padding:0;margin:0">
+        <legend class="sr">Étape 1 sur 7</legend>
+        <h2>Où se trouve votre bien ?</h2>
+        <p class="aide">On lit les ventes notariées autour de cette adresse.</p>
+        <div class="champ">
+          <label for="adresse">Adresse du bien</label>
+          <div class="champ-adresse">
+            <div class="ligne" style="box-shadow:none;border:1.5px solid var(--brume)">
+              <input id="adresse" type="text" placeholder="12 rue des Pins, Capbreton" required>
+            </div>
+          </div>
+          <span class="erreur" id="err-adresse" hidden>Choisissez une adresse dans la liste.</span>
+        </div>
+        <div id="adresse-ok" class="adresse-retenue" hidden><span class="pin"></span><span id="adresse-lib"></span></div>
+        <p class="parcelle-info" id="parcelle-info" hidden></p>
+        <p class="petit" id="repere-ventes" hidden></p>
+      </fieldset>
+
+      <!-- 2. Type -->
+      <fieldset class="etape" data-etape="2" hidden style="border:0;padding:0;margin:0">
+        <legend class="sr">Étape 2 sur 7</legend>
+        <h2>Quel type de bien ?</h2>
+        <div class="choix" role="radiogroup" aria-label="Type de bien">
+          <label><input type="radio" name="type" value="M" required>Maison<small>Avec ou sans jardin</small></label>
+          <label><input type="radio" name="type" value="A">Appartement<small>Studio au T5</small></label>
+          <label><input type="radio" name="type" value="T">Terrain<small>À bâtir ou nu</small></label>
+        </div>
+        <span class="erreur" id="err-type" hidden>Choisissez un type de bien.</span>
+      </fieldset>
+
+      <!-- 3. Surfaces -->
+      <fieldset class="etape" data-etape="3" hidden style="border:0;padding:0;margin:0">
+        <legend class="sr">Étape 3 sur 7</legend>
+        <h2>Ses surfaces</h2>
+        <div class="deux">
+          <div class="champ si-bati">
+            <label for="surf">Surface habitable <span class="petit">(intérieur)</span></label>
+            <div class="unite"><input id="surf" type="number" inputmode="numeric" min="9" max="1000" placeholder="95"><span>m²</span></div>
+          </div>
+          <div class="champ si-bati">
+            <label for="pieces">Pièces principales</label>
+            <input id="pieces" type="number" inputmode="numeric" min="1" max="20" placeholder="4">
+          </div>
+          <div class="champ si-terrain">
+            <label for="terrain">Surface du terrain <span class="petit">(parcelle)</span></label>
+            <div class="unite"><input id="terrain" type="number" inputmode="numeric" min="0" max="200000" placeholder="600"><span>m²</span></div>
+          </div>
+          <div class="champ si-appart">
+            <label for="etage">Étage</label>
+            <input id="etage" type="number" inputmode="numeric" min="0" max="40" placeholder="1">
+          </div>
+        </div>
+        <label class="case si-appart"><input type="checkbox" id="ascenseur"> L’immeuble a un ascenseur</label>
+        <span class="erreur" id="err-surf" hidden>Indiquez la surface.</span>
+      </fieldset>
+
+      <!-- 4. État et atouts -->
+      <fieldset class="etape" data-etape="4" hidden style="border:0;padding:0;margin:0">
+        <legend class="sr">Étape 4 sur 7</legend>
+        <h2>Son état et ses atouts</h2>
+        <div class="champ si-bati">
+          <span class="lbl" id="lbl-etat">État général</span>
+          <div class="choix" role="radiogroup" aria-labelledby="lbl-etat">
+            <label><input type="radio" name="etat" value="renover">À rénover<small>Gros travaux</small></label>
+            <label><input type="radio" name="etat" value="rafraichir">À rafraîchir<small>Peintures, sols</small></label>
+            <label><input type="radio" name="etat" value="bon" checked>Bon état<small>Habitable tel quel</small></label>
+            <label><input type="radio" name="etat" value="refait">Refait à neuf<small>Moins de 5 ans</small></label>
+            <label><input type="radio" name="etat" value="neuf">Neuf ou récent<small>Moins de 10 ans</small></label>
+          </div>
+        </div>
+        <div class="champ si-bati">
+          <span class="lbl" id="lbl-dpe">Étiquette énergie (DPE)</span>
+          <div class="choix ligne" role="radiogroup" aria-labelledby="lbl-dpe">
+            <label class="dpe-A"><input type="radio" name="dpe" value="A">A</label>
+            <label class="dpe-B"><input type="radio" name="dpe" value="B">B</label>
+            <label class="dpe-C"><input type="radio" name="dpe" value="C">C</label>
+            <label class="dpe-D"><input type="radio" name="dpe" value="D">D</label>
+            <label class="dpe-E"><input type="radio" name="dpe" value="E">E</label>
+            <label class="dpe-F"><input type="radio" name="dpe" value="F">F</label>
+            <label class="dpe-G"><input type="radio" name="dpe" value="G">G</label>
+            <label><input type="radio" name="dpe" value="inconnu" checked>?</label>
+          </div>
+        </div>
+        <div class="cases">
+          <label class="case si-maison"><input type="checkbox" id="piscine"> Piscine</label>
+          <label class="case si-bati"><input type="checkbox" id="garage"> Garage ou place de parking</label>
+          <label class="case si-appart"><input type="checkbox" id="exterieur"> Balcon, terrasse ou jardin privatif</label>
+          <label class="case"><input type="checkbox" id="vue"> Vue dégagée sur la mer, un lac ou un golf</label>
+        </div>
+      </fieldset>
+
+      <!-- 5. Projet -->
+      <fieldset class="etape" data-etape="5" hidden style="border:0;padding:0;margin:0">
+        <legend class="sr">Étape 5 sur 7</legend>
+        <h2>Votre projet</h2>
+        <div class="champ">
+          <span class="lbl" id="lbl-delai">Quand pensez-vous vendre ?</span>
+          <div class="choix" role="radiogroup" aria-labelledby="lbl-delai">
+            <label><input type="radio" name="delai" value="maintenant">Dès que possible</label>
+            <label><input type="radio" name="delai" value="3-6">Dans 3 à 6 mois</label>
+            <label><input type="radio" name="delai" value="6-12">Dans 6 à 12 mois</label>
+            <label><input type="radio" name="delai" value="curiosite" checked>Je me renseigne</label>
+          </div>
+        </div>
+        <div class="champ">
+          <label for="statut">Vous êtes</label>
+          <select id="statut">
+            <option value="proprietaire">Propriétaire</option>
+            <option value="heritier">Héritier ou en indivision</option>
+            <option value="futur-acquereur">Futur acquéreur</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+        <div class="champ">
+          <label for="precisions">Une précision sur le bien ? <span class="petit">(facultatif)</span></label>
+          <textarea id="precisions" rows="3" placeholder="Vue sur le lac, mitoyenneté, travaux récents…"></textarea>
+        </div>
+      </fieldset>
+
+      <!-- 6. Coordonnées -->
+      <fieldset class="etape" data-etape="6" hidden style="border:0;padding:0;margin:0">
+        <legend class="sr">Étape 6 sur 7</legend>
+        <h2>Où vous envoyer le détail ?</h2>
+        <p class="aide">Votre estimation s’affiche juste après. Vous recevez aussi la liste des ventes comparées.</p>
+        <div class="champ">
+          <label for="nom">Prénom et nom</label>
+          <input id="nom" type="text" autocomplete="name" required>
+        </div>
+        <div class="deux">
+          <div class="champ">
+            <label for="tel">Téléphone</label>
+            <input id="tel" type="tel" autocomplete="tel" inputmode="tel" placeholder="06 12 34 56 78">
+          </div>
+          <div class="champ">
+            <label for="email">E-mail</label>
+            <input id="email" type="email" autocomplete="email" placeholder="vous@exemple.fr">
+          </div>
+        </div>
+        <label class="case"><input type="checkbox" id="consent"> <span>J’accepte d’être recontacté au sujet de cette estimation. <a href="/noee/mentions-legales/#confidentialite">Confidentialité</a></span></label>
+        <span class="erreur" id="err-contact" hidden></span>
+      </fieldset>
+
+      <!-- 7. Résultat -->
+      <section class="etape resultat" data-etape="7" hidden aria-live="polite">
+        <div id="resultat"><div class="charge">Calcul à partir des ventes notariées…</div></div>
+      </section>
+
+      <div class="nav-etapes" id="nav">
+        <button type="button" class="btn ghost" id="prec" hidden>Retour</button>
+        <button type="submit" class="btn" id="suiv">Continuer</button>
+      </div>
+    </form>
+
+    <div class="carte-panneau"><div class="carte" id="carte" role="region" aria-label="Carte du bien et des ventes comparées"></div></div>
+  </div>
+
+  <section class="bloc">
+    <div class="wrap">
+      <h2>Après l’estimation, la vente se déroule ainsi</h2>
+      <ol class="deroule">
+        <li><b>Jour 0</b><span>Avis de valeur argumenté, signature du mandat</span></li>
+        <li><b>Semaine 1</b><span>Photos, vidéo, plan et mise en ligne</span></li>
+        <li><b>Après chaque visite</b><span>Compte rendu sous 24 h</span></li>
+        <li><b>Semaine 3</b><span>Premier bilan chiffré de la commercialisation</span></li>
+        <li><b>Toutes les 2 semaines</b><span>Point sur les retours et les statistiques</span></li>
+        <li><b>Compromis</b><span>Financement de l’acquéreur vérifié, suivi jusqu’à l’acte</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="bloc">
+    <div class="wrap">
+      <h2>Ce à quoi on s’engage</h2>
+      <div class="engagements">
+        <div><h3>Joignable</h3><p>Visites du lundi au samedi, réponse le dimanche quand une offre arrive.</p></div>
+        <div><h3>Un point chaque semaine</h3><p>Nombre de vues, visites, retours des acquéreurs et ce qu’on change si ça ne bouge pas.</p></div>
+        <div><h3>Des actions écrites</h3><p>Le plan de commercialisation figure au mandat. S’il n’est pas suivi, vous êtes libre.</p></div>
+        <div><h3>Des acquéreurs solvables</h3><p>Capacité de financement vérifiée avant chaque visite.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bloc">
+    <div class="wrap">
+      <div class="contact" style="background:var(--dune);color:var(--ink)">
+        <div>
+          <h2 style="color:var(--ocean)">Votre terrain est grand ?</h2>
+          <p style="margin:0">Une partie de la parcelle vaut peut-être plus vendue à part. Vérifiez-le avant de fixer un prix.</p>
+        </div>
+        <div class="actions"><a class="btn" id="lien-division" href="/noee/division/">Tester mon terrain</a></div>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="/noee/vendor/leaflet/leaflet.js"></script>
+<script type="module" src="/noee/assets/js/page-vendre.js"></script>
+</body>
+</html>

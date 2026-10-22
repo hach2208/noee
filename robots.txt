@@ -1,0 +1,3 @@
+User-agent: *
+Disallow: /noee/admin/
+Sitemap: https://hach2208.github.io/noee/sitemap.xml

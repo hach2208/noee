@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Mise à jour | Noéé</title>
+<meta name="theme-color" content="#0e3b43">
+<link rel="manifest" href="/noee/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/noee/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Noéé">
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #0e3b43; color: #fff; font: 600 1.1rem/1.5 system-ui, -apple-system, sans-serif; text-align: center; padding: 24px; }
+  .rond { width: 44px; height: 44px; border-radius: 50%; border: 4px solid rgba(255,255,255,.25); border-top-color: #c98a12; margin: 0 auto 18px; animation: t .8s linear infinite; }
+  @keyframes t { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div>
+  <div class="rond" aria-hidden="true"></div>
+  <p id="msg">Mise à jour de Noéé…</p>
+</div>
+<script>
+  // Vide les caches de l'application et recharge la dernière version publiée.
+  (async () => {
+    const base = new URL('../', location.href).pathname;
+    try {
+      if ('serviceWorker' in navigator) {
+        for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
+      }
+      if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
+      const fichiers = ['', 'vendre/', 'division/', 'installer/', 'admin/', 'assets/css/noee.css', 'sw.js', 'manifest.webmanifest',
+        'assets/js/config.js', 'assets/js/ui.js', 'assets/js/api.js', 'assets/js/dvf-core.js', 'assets/js/estimate.js',
+        'assets/js/division-calc.js', 'assets/js/croquis.js', 'assets/js/programme.js', 'assets/js/leads.js',
+        'assets/js/page-vendre.js', 'assets/js/page-division.js'];
+      await Promise.all(fichiers.map((f) => fetch(base + f, { cache: 'reload' }).catch(() => null)));
+    } catch (e) { /* on recharge quand même */ }
+    document.getElementById('msg').textContent = 'C’est à jour.';
+    setTimeout(() => location.replace(base + '?maj=' + Date.now()), 400);
+  })();
+</script>
+</body>
+</html>
