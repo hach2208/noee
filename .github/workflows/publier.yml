@@ -8,7 +8,7 @@ on:
     - cron: '17 5 3 * *'   # le 3 de chaque mois : ventes DVF remises à jour
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -36,13 +36,28 @@ jobs:
         run: npm run pages
       - name: Site final
         run: node scripts/build-site.mjs
+      - name: Branche gh-pages (marche quelle que soit la source choisie dans Settings > Pages)
+        run: |
+          cd _site
+          git init -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Publication du $(date -u +%F)"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
       - uses: actions/configure-pages@v5
+        id: pages
+        continue-on-error: true
       - uses: actions/upload-pages-artifact@v3
+        if: steps.pages.outcome == 'success'
         with:
           path: _site
+    outputs:
+      pages: ${{ steps.pages.outcome }}
 
   publier:
     needs: construire
+    if: needs.construire.outputs.pages == 'success'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
