@@ -16,7 +16,7 @@
   ],
   "shortcuts": [
     { "name": "Estimer un bien", "short_name": "Estimer", "url": "vendre/?pro=1#estimation", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Tester une division", "short_name": "Division", "url": "division/", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Terrain : division et logements", "short_name": "Terrain", "url": "division/", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Contacts reçus", "short_name": "Contacts", "url": "admin/", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }

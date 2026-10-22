@@ -1,5 +1,6 @@
 // Noéé : calcul du potentiel de division d'un terrain (Turf.js, global window.turf).
 import { CONFIG } from './config.js';
+import { croquisLonLat } from './croquis.js';
 
 const D = CONFIG.division;
 const T = () => window.turf;
@@ -27,7 +28,6 @@ export function uniteFonciere(parcelles) {
 
 function aire(f) { return f ? T().area(f) : 0; }
 function inter(a, b) { try { return T().intersect(T().featureCollection([a, b])); } catch { return null; } }
-function diff(a, b) { try { return T().difference(T().featureCollection([a, b])); } catch { return a; } }
 function tampon(f, m) { try { return T().buffer(f, m, { units: 'meters' }); } catch { return null; } }
 function unir(fs) {
   const t = T();
@@ -75,43 +75,36 @@ export function analyserDivision({ parcelles, batiments, regles, options = {}, r
     aGarder = Math.min(aGarder, surface);
   }
 
-  // Accès au lot détaché quand il n'est pas en bordure de rue
-  const acces = options.frontRue ? 0 : Math.round(largeurAcces * Math.sqrt(surface) * 0.55);
-  const detachable = Math.max(0, Math.round(surface - aGarder - acces));
-
-  // Zone libre géométrique : retrait des limites, retrait autour du bâti
-  let libre = tampon(unite, -recul);
-  if (libre && batiUni) {
-    const b = tampon(batiUni, Math.max(recul, 4));
-    if (b) libre = diff(libre, b);
-  }
-  const morceaux = libre ? t.flatten(libre).features.filter((f) => aire(f) > 40) : [];
-  // Un carré de 10 m tient-il dans le morceau ? (érosion de 5 m)
-  const constructibles = morceaux.filter((f) => {
-    const er = tampon(f, -5);
-    return er && aire(er) > 1;
-  });
-  const surfaceLibre = Math.round(constructibles.reduce((a, f) => a + aire(f), 0));
-  const formeOk = constructibles.length > 0;
-
-  let lots = Math.floor(detachable / lotCible);
-  if (lots === 0 && detachable >= Math.max(lotMin, lotCible * 0.7)) lots = 1;
-  if (!formeOk) lots = 0;
-  if (!regles.constructible || ces === 0) lots = 0;
+  // Croquis : lot de la maison, lots détachés, accès
+  const constructible = regles.constructible && ces > 0;
+  const croquis = constructible
+    ? croquisLonLat({
+      unite: unite.geometry,
+      batiments: surTerrain.map((b) => b.geometry),
+      routes: options.routes || [],
+      rotation: options.rotation || 0,
+      aGarder, lotCible, lotMin, recul, largeurAcces,
+    })
+    : null;
+  const lotsCroquis = croquis?.lots || [];
+  const lots = lotsCroquis.length;
+  const detachable = lotsCroquis.reduce((a, l) => a + l.properties.aire, 0);
+  const acces = croquis?.acces?.properties.aire || 0;
   const surfLot = lots ? Math.round(detachable / lots) : 0;
+  const aireMaison = croquis?.maison?.properties.aire || (emprise ? Math.round(aGarder) : 0);
 
-  // Valorisation
+  // Valorisation, lot par lot
   let valo = null;
   if (reperes && lots) {
-    const prixLotUnitaire = reperes.prixLot && reperes.surfLot
-      ? reperes.prixLot * (surfLot / reperes.surfLot) ** 0.6
-      : reperes.m2 * surfLot;
-    const brut = Math.round(prixLotUnitaire * lots / 1000) * 1000;
-    const couts = D.coutGeometre + lots * D.coutViabilisationLot + (options.frontRue ? 0 : acces * D.coutAccesM2);
+    const prix = (a) => (reperes.prixLot && reperes.surfLot ? reperes.prixLot * (a / reperes.surfLot) ** 0.6 : reperes.m2 * a);
+    const parLot = lotsCroquis.map((l) => Math.round(prix(l.properties.aire) / 1000) * 1000);
+    const brut = parLot.reduce((a, b) => a + b, 0);
+    const couts = D.coutGeometre + lots * D.coutViabilisationLot + acces * D.coutAccesM2;
     // La maison perd une partie de son jardin : on en retire la valeur
-    const perteMaison = emprise ? Math.round(((surface - aGarder) * reperes.m2 * 0.35) / 1000) * 1000 : 0;
+    const perteMaison = emprise ? Math.round(((surface - aireMaison) * reperes.m2 * 0.35) / 1000) * 1000 : 0;
     valo = {
-      prixLot: Math.round(prixLotUnitaire / 1000) * 1000,
+      parLot,
+      prixLot: Math.round(brut / lots / 1000) * 1000,
       brut,
       couts: Math.round(couts / 100) * 100,
       perteMaison,
@@ -123,27 +116,25 @@ export function analyserDivision({ parcelles, batiments, regles, options = {}, r
   let verdict = 'non';
   let titre = 'Division peu probable';
   let texte = '';
-  if (!regles.constructible || ces === 0) {
+  if (!constructible) {
     titre = 'Division non constructible';
     texte = 'La zone ne permet pas, en principe, de nouvelles maisons. Une division reste possible pour vendre du terrain nu, sans droit à bâtir.';
   } else if (lots >= 1) {
     verdict = 'oui';
-    titre = lots > 1 ? `Division probable en ${lots} lots` : 'Division probable';
-    texte = `On peut détacher environ ${surfLot.toLocaleString('fr-FR')} m² par lot tout en laissant ${Math.round(aGarder).toLocaleString('fr-FR')} m² à la maison.`;
-  } else if (detachable >= lotCible * 0.45 || (formeOk && detachable > 150)) {
+    const enDrapeau = lotsCroquis.some((l) => l.properties.position === 'fond');
+    titre = lots > 1 ? `Division probable en ${lots} lots` : 'Division probable en 1 lot';
+    texte = `${lots > 1 ? 'Lots' : 'Lot'} de ${lotsCroquis.map((l) => l.properties.aire.toLocaleString('fr-FR')).join(', ')} m²${enDrapeau ? ', desservis par un accès de ' + largeurAcces + ' m' : ' avec façade sur rue'}. La maison garde ${aireMaison.toLocaleString('fr-FR')} m².`;
+  } else if (surface - aGarder >= lotCible * 0.6) {
     verdict = 'peutetre';
     titre = 'À étudier de près';
-    texte = !formeOk
-      ? 'La surface existe, mais la forme du terrain laisse peu de place à une maison une fois les retraits appliqués.'
-      : 'La surface détachable est juste. Tout dépend des règles exactes de la zone et de l’accès.';
+    texte = croquis?.notes?.[0] || 'La surface existe, mais la forme du terrain ne permet pas de dessiner un lot correct avec les règles saisies.';
   } else {
-    texte = 'Une fois la surface nécessaire à la maison et à l’accès retirée, il ne reste pas assez de place pour un lot.';
+    texte = 'Une fois la surface nécessaire à la maison retirée, il ne reste pas assez de place pour un lot.';
   }
 
   return {
-    unite, surface, emprise, cesActuel, aGarder: Math.round(aGarder), acces, detachable, lots, surfLot,
-    libre: constructibles.length ? t.featureCollection(constructibles) : null,
-    surfaceLibre, formeOk, verdict, titre, texte, valo, batiments: surTerrain, lotCible,
+    unite, surface, emprise, cesActuel, aGarder: Math.round(aGarder), aireMaison, acces, detachable, lots, surfLot,
+    croquis, verdict, titre, texte, valo, batiments: surTerrain, lotCible,
   };
 }
 

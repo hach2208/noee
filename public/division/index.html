@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Mon terrain est-il divisible ? Test gratuit | Noéé</title>
-<meta name="description" content="Testez en deux minutes si une partie de votre terrain peut être vendue à bâtir : cadastre, zone du PLU, bâtiments existants et prix des terrains autour.">
+<title>Terrain : division, logements, recherche par surface | Noéé</title>
+<meta name="description" content="Touchez les parcelles sur la carte : surface, zone du PLU, croquis de division en lots, nombre de logements possibles et prix des terrains autour.">
 <meta name="theme-color" content="#0e3b43">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -17,84 +17,105 @@
 <link rel="stylesheet" href="/assets/css/noee.css">
 </head>
 <body data-page="division">
-<main id="contenu">
-  <div class="wrap" style="padding-top:clamp(28px,5vw,56px)">
-    <h1 style="max-width:15ch">Une partie de votre terrain vaut peut-être plus vendue à part.</h1>
-    <p class="lead">On lit le cadastre, la zone du PLU et l’emprise de la maison, puis on calcule ce qui reste à bâtir et ce que ça vaut au prix des terrains autour.</p>
-  </div>
-
-  <div class="wrap outil-page" id="simulateur">
-    <div>
-      <div class="panneau">
-        <h2 style="font-size:1.5rem">Adresse du terrain</h2>
-        <div class="champ" style="margin-bottom:0">
-          <label class="sr" for="adresse">Adresse du terrain</label>
-          <div class="champ-adresse">
-            <div class="ligne" style="box-shadow:none;border:1.5px solid var(--brume)">
-              <input id="adresse" type="text" placeholder="8 allée des Chênes, Hossegor">
-              <button type="button" class="btn" id="lancer">Analyser</button>
-            </div>
-          </div>
+<main id="contenu" class="terrain">
+  <div class="terrain-carte">
+    <div class="carte" id="carte" role="region" aria-label="Carte du cadastre : touchez une parcelle pour la sélectionner"></div>
+    <div class="carte-haut">
+      <div class="champ-adresse">
+        <div class="ligne">
+          <label class="sr" for="adresse">Aller à une adresse</label>
+          <input id="adresse" type="text" placeholder="Aller à une adresse">
         </div>
-        <p class="petit" id="consigne" style="margin:10px 0 0">Ce n’est pas la bonne parcelle ? Touchez la vôtre sur la carte. Touchez une parcelle voisine pour l’ajouter si elle vous appartient aussi.</p>
-      </div>
-
-      <div id="analyse" hidden>
-        <div class="panneau" style="margin-top:16px">
-          <h2 style="font-size:1.5rem">Votre terrain</h2>
-          <div class="parcelles-choisies" id="parcelles"></div>
-          <div id="urba"><div class="charge">Lecture du PLU…</div></div>
-          <details class="regles" id="regles-box">
-            <summary>Règles appliquées au calcul</summary>
-            <p class="petit">Préremplies selon le type de zone. Corrigez-les avec le règlement du PLU si vous l’avez.</p>
-            <div class="deux">
-              <div class="champ"><label for="r-ces">Emprise au sol maximale</label><div class="unite"><input id="r-ces" type="number" min="0" max="100"><span>%</span></div></div>
-              <div class="champ"><label for="r-recul">Retrait des limites</label><div class="unite"><input id="r-recul" type="number" min="0" max="20" step="0.5"><span>m</span></div></div>
-              <div class="champ"><label for="r-lotmin">Surface minimale d’un lot</label><div class="unite"><input id="r-lotmin" type="number" min="0" max="5000"><span>m²</span></div></div>
-              <div class="champ"><label for="r-lot">Surface visée par lot</label><div class="unite"><input id="r-lot" type="number" min="150" max="5000"><span>m²</span></div></div>
-            </div>
-            <label class="case" style="margin-bottom:16px"><input type="checkbox" id="r-front"> Le lot détaché donnerait directement sur la rue (pas d’accès à créer)</label>
-          </details>
-        </div>
-
-        <div class="panneau" style="margin-top:16px" id="res-box">
-          <div id="resultat"></div>
-        </div>
-
-        <form class="panneau" style="margin-top:16px" id="form-lead" novalidate>
-          <h2 style="font-size:1.5rem">Recevoir l’étude détaillée</h2>
-          <p class="aide">Plan de division indicatif, lecture du règlement de zone et prix des terrains vendus autour.</p>
-          <div class="champ"><label for="nom">Prénom et nom</label><input id="nom" type="text" autocomplete="name"></div>
-          <div class="deux">
-            <div class="champ"><label for="tel">Téléphone</label><input id="tel" type="tel" autocomplete="tel" inputmode="tel"></div>
-            <div class="champ"><label for="email">E-mail</label><input id="email" type="email" autocomplete="email"></div>
-          </div>
-          <label class="case"><input type="checkbox" id="consent"> <span>J’accepte d’être recontacté au sujet de cette étude. <a href="/mentions-legales/#confidentialite">Confidentialité</a></span></label>
-          <span class="erreur" id="err-lead" hidden></span>
-          <div class="nav-etapes"><button class="btn resine" type="submit">Recevoir mon étude gratuite</button></div>
-        </form>
       </div>
     </div>
-
-    <div class="carte-panneau">
-      <div class="carte" id="carte" role="region" aria-label="Carte du terrain"></div>
+    <div class="carte-bas">
+      <span class="etat" id="etat" role="status">Touchez une parcelle. Touchez-en d’autres pour les additionner.</span>
+      <button type="button" class="btn petit-btn ghost fond-blanc" id="vider" hidden>Vider</button>
     </div>
   </div>
 
-  <section class="bloc">
-    <div class="wrap sources">
-      <div>
-        <h2>Ce que l’outil regarde</h2>
-        <p>Un premier avis automatique, en quelques secondes. Il ne remplace ni la lecture complète du règlement de zone ni l’avis d’un géomètre.</p>
-      </div>
-      <dl>
-        <dt>Cadastre</dt><dd>Contour et surface officielle de vos parcelles (IGN, Parcellaire Express).</dd>
-        <dt>Zone du PLU</dt><dd>Type de zone, règlement et prescriptions, dont les espaces boisés classés (Géoportail de l’urbanisme).</dd>
-        <dt>Bâtiments</dt><dd>Emprise au sol de la maison et des annexes (IGN, BD TOPO).</dd>
-        <dt>Prix</dt><dd>Terrains à bâtir vendus autour (DVF, notaires).</dd>
-      </dl>
+  <aside class="terrain-panneau" aria-label="Analyse du terrain">
+    <section class="bloc-p" id="bloc-sel">
+      <h1 class="titre-p">Terrain</h1>
+      <div id="selection"><p class="petit">Aucune parcelle sélectionnée. Touchez la carte, ou cherchez une adresse.</p></div>
+    </section>
+
+    <div class="onglets" role="tablist" aria-label="Que faire de ce terrain">
+      <button type="button" role="tab" id="t-lots" aria-controls="p-lots" aria-selected="true">Diviser en lots</button>
+      <button type="button" role="tab" id="t-logements" aria-controls="p-logements" aria-selected="false">Logements</button>
+      <button type="button" role="tab" id="t-chercher" aria-controls="p-chercher" aria-selected="false">Chercher</button>
     </div>
-  </section>
+
+    <!-- Division en lots -->
+    <section class="bloc-p" id="p-lots" role="tabpanel" aria-labelledby="t-lots">
+      <div id="res-lots"><p class="petit">Le croquis de division s’affiche ici et sur la carte dès qu’une parcelle est sélectionnée.</p></div>
+      <details class="regles" id="regles-lots">
+        <summary>Règles appliquées au calcul</summary>
+        <p class="petit">Préremplies selon la zone, ou avec les valeurs du règlement que vous avez saisies dans l’onglet Logements.</p>
+        <div class="deux">
+          <div class="champ"><label for="r-ces">Emprise au sol maximale</label><div class="unite"><input id="r-ces" type="number" min="0" max="100" inputmode="numeric"><span>%</span></div></div>
+          <div class="champ"><label for="r-recul">Retrait autour de la maison</label><div class="unite"><input id="r-recul" type="number" min="0" max="20" step="0.5" inputmode="decimal"><span>m</span></div></div>
+          <div class="champ"><label for="r-lotmin">Surface minimale d’un lot</label><div class="unite"><input id="r-lotmin" type="number" min="0" max="5000" inputmode="numeric"><span>m²</span></div></div>
+          <div class="champ"><label for="r-lot">Surface visée par lot</label><div class="unite"><input id="r-lot" type="number" min="150" max="5000" inputmode="numeric"><span>m²</span></div></div>
+          <div class="champ"><label for="r-acces">Largeur de l’accès</label><div class="unite"><input id="r-acces" type="number" min="3" max="8" step="0.5" inputmode="decimal"><span>m</span></div></div>
+        </div>
+      </details>
+    </section>
+
+    <!-- Logements (repris d'Imoscope) -->
+    <section class="bloc-p" id="p-logements" role="tabpanel" aria-labelledby="t-logements" hidden>
+      <h2 class="sous-titre">Que peut-on construire ?</h2>
+      <div class="choix programmes" role="radiogroup" aria-label="Programme envisagé" id="programmes"></div>
+      <div class="deux" style="margin-top:14px">
+        <div class="champ"><label for="h-emprise">Emprise au sol</label><div class="unite"><input id="h-emprise" type="number" min="0" max="100" inputmode="numeric"><span>%</span></div></div>
+        <div class="champ"><label for="h-niveaux">Niveaux</label><div class="unite"><input id="h-niveaux" type="number" min="1" max="10" inputmode="numeric"><span>niv.</span></div></div>
+        <div class="champ"><label for="h-sdp">Surface de plancher par logement</label><div class="unite"><input id="h-sdp" type="number" min="20" max="300" inputmode="numeric"><span>m²</span></div></div>
+        <div class="champ"><label for="h-social">Logements sociaux</label><div class="unite"><input id="h-social" type="number" min="0" max="100" inputmode="numeric"><span>%</span></div></div>
+      </div>
+      <div id="res-logements"><p class="petit">Sélectionnez une ou plusieurs parcelles pour obtenir le nombre de logements.</p></div>
+      <details class="regles" id="bilan-box">
+        <summary>Prix de vente et coûts du bilan promoteur</summary>
+        <div class="deux">
+          <div class="champ"><label for="b-prix">Prix de vente libre</label><div class="unite"><input id="b-prix" type="number" min="1000" max="30000" inputmode="numeric"><span>€/m²</span></div></div>
+          <div class="champ"><label for="b-social">Prix de vente social</label><div class="unite"><input id="b-social" type="number" min="1000" max="6000" inputmode="numeric" value="2600"><span>€/m²</span></div></div>
+          <div class="champ"><label for="b-cout">Coût de construction</label><div class="unite"><input id="b-cout" type="number" min="800" max="5000" inputmode="numeric" value="2100"><span>€/m²</span></div></div>
+          <div class="champ"><label for="b-marge">Marge du promoteur</label><div class="unite"><input id="b-marge" type="number" min="0" max="30" inputmode="numeric" value="10"><span>%</span></div></div>
+        </div>
+      </details>
+    </section>
+
+    <!-- Recherche de terrains par surface -->
+    <section class="bloc-p" id="p-chercher" role="tabpanel" aria-labelledby="t-chercher" hidden>
+      <h2 class="sous-titre">Chercher un terrain par surface</h2>
+      <p class="petit">Toutes les parcelles de la commune dans la fourchette s’affichent en vert sur la carte.</p>
+      <div class="champ">
+        <label for="c-commune">Commune</label>
+        <select id="c-commune"></select>
+      </div>
+      <div class="deux">
+        <div class="champ"><label for="c-min">Surface minimale</label><div class="unite"><input id="c-min" type="number" min="0" inputmode="numeric" value="800"><span>m²</span></div></div>
+        <div class="champ"><label for="c-max">Surface maximale</label><div class="unite"><input id="c-max" type="number" min="0" inputmode="numeric" value="1200"><span>m²</span></div></div>
+      </div>
+      <button type="button" class="btn" id="c-lancer" style="width:100%">Chercher ces terrains</button>
+      <p class="petit" id="c-etat" aria-live="polite"></p>
+      <div id="c-resultats"></div>
+    </section>
+
+    <form class="bloc-p" id="form-lead" novalidate>
+      <h2 class="sous-titre">Recevoir l’étude détaillée</h2>
+      <p class="petit">Plan de division, lecture du règlement de zone et prix des terrains vendus autour.</p>
+      <div class="champ"><label for="nom">Prénom et nom</label><input id="nom" type="text" autocomplete="name"></div>
+      <div class="deux">
+        <div class="champ"><label for="tel">Téléphone</label><input id="tel" type="tel" autocomplete="tel" inputmode="tel"></div>
+        <div class="champ"><label for="email">E-mail</label><input id="email" type="email" autocomplete="email"></div>
+      </div>
+      <label class="case"><input type="checkbox" id="consent"> <span>J’accepte d’être recontacté au sujet de cette étude. <a href="/mentions-legales/#confidentialite">Confidentialité</a></span></label>
+      <span class="erreur" id="err-lead" hidden></span>
+      <div class="nav-etapes"><button class="btn resine" type="submit">Recevoir mon étude gratuite</button></div>
+    </form>
+
+    <p class="petit avert">Premier avis automatique, sans valeur juridique. Seuls le règlement écrit du PLU, les servitudes et un certificat d’urbanisme font foi. Sources : cadastre et BD TOPO (IGN), Géoportail de l’urbanisme, DVF, Base adresse nationale.</p>
+  </aside>
 </main>
 <script src="/vendor/leaflet/leaflet.js"></script>
 <script src="/vendor/turf.min.js"></script>

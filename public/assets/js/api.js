@@ -88,7 +88,7 @@ export async function prescriptions(geom) {
       const j = await getJson(`${A.gpu}/${kind}?geom=${encodeURIComponent(JSON.stringify(geom))}`, { timeout: 10000 });
       for (const f of j.features || []) {
         const p = f.properties || {};
-        out.push({ source: kind, libelle: p.libelle || p.txt || 'Prescription', type: p.typepsc || p.typeinf || '', sousType: p.stypepsc || p.stypeinf || '' });
+        out.push({ source: kind, libelle: p.libelle || p.txt || 'Prescription', txt: p.txt || '', urlfic: p.urlfic || null, type: p.typepsc || p.typeinf || '', sousType: p.stypepsc || p.stypeinf || '' });
       }
     } catch { /* une couche manquante n’empêche pas l’analyse */ }
   }
@@ -109,6 +109,54 @@ export async function communeRnu(insee) {
     const f = (j.features || [])[0];
     return f ? Boolean(f.properties.is_rnu) : null;
   } catch { return null; }
+}
+
+// Toutes les parcelles d'une commune (pages de 1000), pour la recherche par surface
+export async function parcellesCommune(insee, onProgress) {
+  const toutes = [];
+  for (let page = 0; page < 40; page++) {
+    const j = await getJson(`${A.cadastre}?code_insee=${insee}&_limit=1000&_start=${page * 1000}`, { timeout: 30000 });
+    const f = j.features || [];
+    toutes.push(...f);
+    onProgress?.(toutes.length);
+    if (f.length < 1000) break;
+  }
+  return toutes.map(normaliseParcelle);
+}
+
+// Parcelles visibles dans un rectangle (repli si la commune entière échoue)
+export async function parcellesDans(bbox) {
+  const [w, s2, e, n] = bbox;
+  const poly = { type: 'Polygon', coordinates: [[[w, s2], [e, s2], [e, n], [w, n], [w, s2]]] };
+  const j = await getJson(`${A.cadastre}?geom=${encodeURIComponent(JSON.stringify(poly))}&_limit=1000`, { timeout: 30000 });
+  return (j.features || []).map(normaliseParcelle);
+}
+
+// Numéros de rue (Base adresse nationale), préparés par npm run data
+const adressesCache = new Map();
+export function adressesCommune(insee) {
+  if (!adressesCache.has(insee)) {
+    adressesCache.set(insee, getJson(`/data/adresses/${insee}.json`, { timeout: 15000 }).then((j) => j.adresses || []).catch(() => []));
+  }
+  return adressesCache.get(insee);
+}
+
+// Routes (BD TOPO) pour savoir de quel côté est la rue
+export async function routesDans(bbox) {
+  const [minx, miny, maxx, maxy] = bbox;
+  const params = new URLSearchParams({
+    SERVICE: 'WFS', VERSION: '1.0.0', REQUEST: 'GetFeature',
+    TYPENAME: 'BDTOPO_V3:troncon_de_route', OUTPUTFORMAT: 'application/json',
+    SRSNAME: 'EPSG:4326', BBOX: `${minx},${miny},${maxx},${maxy}`, MAXFEATURES: '200',
+  });
+  const j = await getJson(`${A.wfs}?${params}`, { timeout: 20000 });
+  const lignes = [];
+  for (const f of j.features || []) {
+    const g = fixAxes(stripZ(f.geometry));
+    if (g.type === 'LineString') lignes.push(g.coordinates);
+    else if (g.type === 'MultiLineString') lignes.push(...g.coordinates);
+  }
+  return lignes;
 }
 
 // ── Bâtiments (BD TOPO, WFS Géoplateforme) ──
@@ -132,6 +180,7 @@ export function stripZ(geom) {
 
 // Sécurité : en France la latitude (41–51) est toujours > à la longitude (-5–10)
 function fixAxes(geom) {
+  if (!geom) return geom;
   let first = geom.coordinates;
   while (Array.isArray(first[0])) first = first[0];
   if (first[0] > 40 && first[1] < 15) {

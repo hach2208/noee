@@ -28,7 +28,7 @@ export function montageCommun() {
       <a class="logo" href="/" aria-label="${esc(M.nom)}, accueil">${logo()}</a>
       <nav class="nav" aria-label="Navigation principale">
         ${lien('/vendre/', 'Estimer', 'vendre')}
-        ${lien('/division/', 'Division', 'division')}
+        ${lien('/division/', 'Terrain', 'division')}
         ${lien('/biens/', 'Biens', 'biens')}
         ${lien('/communes/', 'Communes', 'communes')}
       </nav>
@@ -49,7 +49,7 @@ export function montageCommun() {
       <div>
         <ul>
           <li><a href="/vendre/">Estimer un bien</a></li>
-          <li><a href="/division/">Tester la division d’un terrain</a></li>
+          <li><a href="/division/">Terrain : division, logements</a></li>
           <li><a href="/biens/">Biens à vendre</a></li>
           <li><a href="/communes/">Prix par commune</a></li>
         </ul>
@@ -115,7 +115,7 @@ export function toast(msg, ms = 3500) {
 const wmts = (layer, format, style = 'normal') =>
   `${CONFIG.api.wmts}?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=${layer}&STYLE=${encodeURIComponent(style)}&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=${format}`;
 
-export function creerCarte(el, { lat = CONFIG.carte.lat, lon = CONFIG.carte.lon, zoom = CONFIG.carte.zoom, fond = 'ortho', cadastre = true, interactive = true, selecteur = true } = {}) {
+export function creerCarte(el, { lat = CONFIG.carte.lat, lon = CONFIG.carte.lon, zoom = CONFIG.carte.zoom, fond = 'ortho', cadastre = true, zonage = null, interactive = true, selecteur = true } = {}) {
   const L = window.L;
   const map = L.map(el, {
     zoomControl: interactive, attributionControl: interactive, dragging: interactive, scrollWheelZoom: interactive,
@@ -127,6 +127,12 @@ export function creerCarte(el, { lat = CONFIG.carte.lat, lon = CONFIG.carte.lon,
     plan: L.tileLayer(wmts('GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2', 'image/png'), { maxNativeZoom: 19, maxZoom: 21, attribution: attr }),
   };
   const couchesCadastre = L.tileLayer(wmts('CADASTRALPARCELS.PARCELLAIRE_EXPRESS', 'image/png', 'PCI vecteur'), { maxNativeZoom: 19, maxZoom: 21, opacity: 0.85 });
+  // Zonage du PLU (Géoportail de l'urbanisme), couleurs par type de zone
+  const couchesZonage = L.tileLayer.wms('https://data.geopf.fr/wms-v/ows', {
+    layers: 'du,zone_urba', format: 'image/png', transparent: true, version: '1.3.0', opacity: 0.4, maxZoom: 21,
+    attribution: '© Géoportail de l’urbanisme',
+  });
+  if (zonage) couchesZonage.addTo(map);
   let actuel = fonds[fond];
   actuel.addTo(map);
   if (cadastre) couchesCadastre.addTo(map);
@@ -142,7 +148,7 @@ export function creerCarte(el, { lat = CONFIG.carte.lat, lon = CONFIG.carte.lon,
     const Ctl = L.Control.extend({
       onAdd() {
         const div = L.DomUtil.create('div', 'couches');
-        div.innerHTML = `<button type="button" data-f="ortho" aria-pressed="${fond === 'ortho'}">Photo</button><button type="button" data-f="plan" aria-pressed="${fond === 'plan'}">Plan</button><button type="button" data-c aria-pressed="${cadastre}">Cadastre</button>`;
+        div.innerHTML = `<button type="button" data-f="ortho" aria-pressed="${fond === 'ortho'}">Photo</button><button type="button" data-f="plan" aria-pressed="${fond === 'plan'}">Plan</button><button type="button" data-c aria-pressed="${cadastre}">Cadastre</button>${zonage !== null ? `<button type="button" data-z aria-pressed="${Boolean(zonage)}">PLU</button>` : ''}`;
         L.DomEvent.disableClickPropagation(div);
         div.addEventListener('click', (e) => {
           const b = e.target.closest('button');
@@ -150,6 +156,10 @@ export function creerCarte(el, { lat = CONFIG.carte.lat, lon = CONFIG.carte.lon,
           if (b.dataset.f) {
             setFond(b.dataset.f);
             div.querySelectorAll('[data-f]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+          } else if (b.dataset.z !== undefined) {
+            const on = b.getAttribute('aria-pressed') !== 'true';
+            if (on) couchesZonage.addTo(map); else map.removeLayer(couchesZonage);
+            b.setAttribute('aria-pressed', String(on));
           } else {
             const on = b.getAttribute('aria-pressed') !== 'true';
             if (on) couchesCadastre.addTo(map); else map.removeLayer(couchesCadastre);

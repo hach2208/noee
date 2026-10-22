@@ -1,11 +1,11 @@
 // Noéé : service worker. L'interface marche hors ligne, les données restent à jour.
-const VERSION = 'noee-v2';
+const VERSION = 'noee-v3';
 const BASE = new URL('./', self.location).pathname;
 const COQUILLE = [
   '', 'vendre/', 'division/', 'admin/', 'installer/',
   'assets/css/noee.css',
   'assets/js/config.js', 'assets/js/ui.js', 'assets/js/api.js', 'assets/js/dvf-core.js', 'assets/js/estimate.js',
-  'assets/js/division-calc.js', 'assets/js/leads.js', 'assets/js/page-vendre.js', 'assets/js/page-division.js',
+  'assets/js/division-calc.js', 'assets/js/croquis.js', 'assets/js/programme.js', 'assets/js/leads.js', 'assets/js/page-vendre.js', 'assets/js/page-division.js',
   'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', 'vendor/turf.min.js',
   'vendor/fonts/archivo-latin-wdth-normal.woff2', 'icons/icon-192.png',
 ].map((p) => BASE + p);

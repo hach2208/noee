@@ -137,8 +137,43 @@ async function main() {
   for (const c of communes) c.ventes = stats[c.c]?.total || 0;
   fs.writeFileSync(path.join(OUT, 'communes.json'), JSON.stringify(communes));
   fs.writeFileSync(path.join(OUT, 'stats.json'), JSON.stringify({ maj, communes: stats }));
+  if (!args.includes('--sans-adresses')) await adresses();
   note(`${total.toLocaleString('fr-FR')} ventes exploitables dans ${Object.keys(stats).length} communes (${communes.length} communes listées)`);
   console.log('Terminé. Lancez maintenant : npm run pages');
+}
+
+// Numéros de rue (Base adresse nationale) découpés par commune, avec les parcelles rattachées
+async function adresses() {
+  fs.mkdirSync(path.join(OUT, 'adresses'), { recursive: true });
+  for (const dep of deps) {
+    try {
+      const r = await fetchRetry(`https://adresse.data.gouv.fr/data/ban/adresses/latest/csv/adresses-${dep}.csv.gz`);
+      if (!r.ok) { alerte(`BAN ${dep} : HTTP ${r.status}`); continue; }
+      const rl = await lignesDepuis(Readable.fromWeb(r.body), true);
+      let head = null;
+      const parCommune = new Map();
+      let n = 0;
+      for await (const line of rl) {
+        if (!line) continue;
+        const cells = line.split(';');
+        if (!head) { head = Object.fromEntries(cells.map((h, i) => [h.trim(), i])); continue; }
+        const num = cells[head.numero];
+        const lon = Number(cells[head.lon]);
+        const lat = Number(cells[head.lat]);
+        if (!num || num === '99999' || !Number.isFinite(lon) || !Number.isFinite(lat)) continue;
+        const rep = cells[head.rep] || '';
+        const insee = cells[head.code_insee];
+        const cad = (cells[head.cad_parcelles] || '').split('|').filter(Boolean);
+        if (!parCommune.has(insee)) parCommune.set(insee, []);
+        parCommune.get(insee).push([Math.round(lon * 1e6) / 1e6, Math.round(lat * 1e6) / 1e6, rep ? `${num} ${rep}` : num, cells[head.nom_voie] || '', cad]);
+        n++;
+      }
+      for (const [insee, liste] of parCommune) fs.writeFileSync(path.join(OUT, 'adresses', `${insee}.json`), JSON.stringify({ insee, adresses: liste }));
+      note(`BAN ${dep} : ${n.toLocaleString('fr-FR')} adresses dans ${parCommune.size} communes`);
+    } catch (e) {
+      alerte(`BAN ${dep} illisible : ${e.message}`);
+    }
+  }
 }
 
 main().catch((e) => { console.log(GHA ? `::error::${e.message}` : e.message); process.exit(1); });
