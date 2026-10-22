@@ -80,3 +80,12 @@ test('repères terrain à bâtir', () => {
   assert.ok(r && r.n >= 5 && r.tabSeulement);
   assert.ok(r.m2 > 250 && r.m2 < 450, `m2 ${r.m2}`);
 });
+
+test('estimation : surface hors norme signalée et prix au m² réduit', () => {
+  const v = marche();
+  const r = estimer({ lat: 43.64, lon: -1.42, type: 'M', surf: 992, etat: 'bon', dpe: 'D' }, v, new Date('2026-06-15'));
+  assert.ok(r.ok);
+  assert.equal(r.fiabilite, 'faible');
+  assert.ok(r.alerte);
+  assert.ok(r.m2 < 4000, `m2 ${r.m2}`);
+});

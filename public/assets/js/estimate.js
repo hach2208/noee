@@ -42,7 +42,9 @@ export function estimer(bien, ventes, now = new Date()) {
     }
     if (choisies.length) break;
   }
+  let extrapole = false;
   if (!choisies.length) {
+    extrapole = true;
     // On prend ce qu'il y a de plus proche, même s'il y en a peu
     choisies = enrichies.filter((e) => e.age <= 72).sort((a, b) => a.d - b.d).slice(0, E.minComparables);
     rayon = choisies.length ? Math.max(...choisies.map((e) => e.d)) : 0;
@@ -81,6 +83,14 @@ export function estimer(bien, ventes, now = new Date()) {
   }
   if (bien.vue) add('Vue dégagée (mer, lac, golf)', K.vue);
 
+  // Taille hors norme : le prix au m² baisse quand la surface augmente (et inversement)
+  const tailleRef = median(choisies.map((e) => e.taille));
+  const ratio = tailleRef ? taille / tailleRef : 1;
+  if (ratio > 1.3 || ratio < 0.75) {
+    const f = Math.max(0.6, Math.min(1.15, ratio ** -0.2));
+    add(`Surface très ${ratio > 1 ? 'supérieure' : 'inférieure'} aux ventes comparées (${Math.round(tailleRef)} m²)`, Math.round((f - 1) * 100) / 100);
+  }
+
   let base = m2Med * taille;
   let valeur = base * (1 + coef);
 
@@ -108,6 +118,11 @@ export function estimer(bien, ventes, now = new Date()) {
   let fiabilite = 'faible';
   if (choisies.length >= 12 && rayon <= 1500 && dispersion < 0.35) fiabilite = 'élevée';
   else if (choisies.length >= E.minComparables && rayon <= 6000 && dispersion < 0.6) fiabilite = 'moyenne';
+  let alerte = null;
+  if (extrapole || ratio > 1.6 || ratio < 0.6) {
+    fiabilite = 'faible';
+    alerte = `Aucun bien de ${Math.round(taille)} m² ne s’est vendu à proximité : les ventes comparées font en moyenne ${Math.round(tailleRef)} m². Le prix est extrapolé, vérifiez la surface saisie.`;
+  }
 
   const arrondi = (x) => Math.round(x / 1000) * 1000;
   return {
@@ -121,6 +136,7 @@ export function estimer(bien, ventes, now = new Date()) {
     rayon: Math.round(rayon),
     mois,
     fiabilite,
+    alerte,
     ajustements,
     comparables: choisies.map((e) => ({
       date: e.v[V.date], type: e.v[V.type], prix: e.v[V.prix], surf: e.v[V.surf], pieces: e.v[V.pieces],

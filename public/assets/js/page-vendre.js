@@ -17,6 +17,7 @@ let etape = 1;
 let adresse = null;
 let ventesP = null;
 let calques = null;
+let confirmeSurf = null;
 
 const { map } = creerCarte($('#carte'), { zoom: 13 });
 let cible = null;
@@ -78,10 +79,30 @@ function valider(n) {
     const t = type();
     const s = Number($('#surf').value);
     const ter = Number($('#terrain').value);
+    const err = $('#err-surf');
     const ok = t === 'T' ? ter >= 50 : s >= 9;
-    $('#err-surf').hidden = ok;
-    $('#err-surf').textContent = t === 'T' ? 'Indiquez la surface du terrain.' : 'Indiquez la surface habitable.';
-    return ok;
+    err.hidden = ok;
+    err.textContent = t === 'T' ? 'Indiquez la surface du terrain.' : 'Indiquez la surface habitable.';
+    if (!ok) return false;
+    // Surface habitable inhabituelle : on demande une confirmation (souvent la surface du terrain saisie au mauvais endroit)
+    const seuil = t === 'A' ? 200 : 350;
+    const cle = `${t}-${s}-${ter}`;
+    if (t !== 'T' && s > seuil && confirmeSurf !== cle) {
+      confirmeSurf = cle;
+      err.hidden = false;
+      err.textContent = `${s} m² habitables, c’est très grand. La surface du terrain se met dans la case « Surface du terrain ». Si ${s} m² est bien la surface habitable, appuyez à nouveau sur Continuer.`;
+      $('#surf').focus();
+      return false;
+    }
+    if (t === 'M' && ter && s > ter * 3) {
+      if (confirmeSurf !== cle) {
+        confirmeSurf = cle;
+        err.hidden = false;
+        err.textContent = 'La surface habitable dépasse largement celle du terrain. Les deux cases ne sont-elles pas inversées ? Appuyez à nouveau sur Continuer pour confirmer.';
+        return false;
+      }
+    }
+    return true;
   }
   if (n === 6) {
     const e = $('#err-contact');
@@ -185,6 +206,7 @@ function rendreResultat(box, bien, r) {
     <h2 class="sr">Estimation</h2>
     <div class="fourchette"><span class="valeur">${euro(r.valeur)}</span></div>
     <span class="fiab ${cls}">Fiabilité ${r.fiabilite}</span>
+    ${r.alerte ? `<div class="encart ko"><p>${esc(r.alerte)}</p></div>` : ''}
     <div class="jauge" role="img" aria-label="Fourchette de ${euro(r.bas)} à ${euro(r.haut)}"><i style="left:${pos}%"></i></div>
     <div class="jauge-lib"><span>Bas <b>${euro(r.bas)}</b></span><span>Haut <b>${euro(r.haut)}</b></span></div>
     <div class="chiffres">

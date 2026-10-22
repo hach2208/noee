@@ -1,5 +1,5 @@
 // Noéé : service worker. L'interface marche hors ligne, les données restent à jour.
-const VERSION = 'noee-v1';
+const VERSION = 'noee-v2';
 const BASE = new URL('./', self.location).pathname;
 const COQUILLE = [
   '', 'vendre/', 'division/', 'admin/', 'installer/',
