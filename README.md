@@ -25,7 +25,17 @@ https://ton-site.fr/division/?adresse=12%20rue%20des%20Pins%20Capbreton&utm_sour
 
 Les paramètres `utm_*` sont enregistrés avec chaque contact. Ajoute `&pro=1` à `/vendre/` pour ton usage perso : l’étape coordonnées est sautée et rien n’est enregistré.
 
-## Démarrage (10 minutes)
+## En ligne
+
+**https://hach2208.github.io/noee/** : publié automatiquement par GitHub Pages à chaque modification poussée sur `main`, et le 3 de chaque mois pour récupérer les nouvelles ventes DVF (`.github/workflows/publier.yml`). Pour relancer à la main : onglet **Actions**, puis **Publier Noéé**, puis **Run workflow**.
+
+### Sur le téléphone
+
+Ouvre **https://hach2208.github.io/noee/installer/**. La page explique l’installation sur iPhone (Safari, Partager, Sur l’écran d’accueil) et sur Android (bouton Installer). Elle propose aussi le **mode perso** : sur ce téléphone, l’estimation saute l’étape coordonnées et n’enregistre rien.
+
+Un appui long sur l’icône (Android) donne trois raccourcis : Estimer, Division, Contacts.
+
+## Démarrage en local
 
 Il faut Node 18 ou plus récent.
 
