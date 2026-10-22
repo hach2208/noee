@@ -418,3 +418,5 @@ table.lots td:first-child, table.lots th:first-child { text-align: left; }
   .carte-haut { left: 52px; right: 10px; top: 56px; }
 }
 @media (max-width: 980px) { .onglets { top: 64px; } }
+.parcelle-info { margin: 12px 0 0; padding: 12px 14px; border-left: 4px solid var(--resine); background: var(--resine-pale); border-radius: 0 var(--r-s) var(--r-s) 0; }
+.parcelle-info b { color: var(--ocean); }

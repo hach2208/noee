@@ -67,6 +67,48 @@ function normaliseParcelle(f) {
   };
 }
 
+// Parcelle par référence cadastrale (idu = insee + com_abs + section + numéro)
+export async function parcelleParIdu(idu) {
+  const m = /^(\d{2}[\dAB]\d{2})(\d{3})([0-9A-Z]{1,2})(\d{4})$/.exec(String(idu).replace(/\s/g, ''));
+  if (!m) return null;
+  const [, insee, , section, numero] = m;
+  const j = await getJson(`${A.cadastre}?code_insee=${insee}&section=${section.padStart(2, '0')}&numero=${numero}`);
+  const f = (j.features || []).find((x) => x.properties.idu === idu) || (j.features || [])[0];
+  return f ? normaliseParcelle(f) : null;
+}
+
+/**
+ * Parcelle d'une adresse : le point de l'adresse tombe parfois sur la rue.
+ * 1) parcelle au point ; 2) parcelle rattachée à l'adresse dans la BAN ; 3) parcelle la plus proche à 25 m.
+ */
+export async function parcellePourAdresse(it) {
+  const p = await parcelleAuPoint(it.lon, it.lat);
+  if (p) return p;
+  if (it.insee) {
+    const liste = await adressesCommune(it.insee);
+    let best = null;
+    for (const a of liste) {
+      if (!a[4]?.length) continue;
+      const d = Math.hypot((a[0] - it.lon) * 80000, (a[1] - it.lat) * 111000);
+      if (d < 40 && (!best || d < best.d)) best = { d, idu: a[4][0] };
+    }
+    if (best) { const q = await parcelleParIdu(best.idu).catch(() => null); if (q) return q; }
+  }
+  const dx = 25 / 80000;
+  const dy = 25 / 111000;
+  const carre = { type: 'Polygon', coordinates: [[[it.lon - dx, it.lat - dy], [it.lon + dx, it.lat - dy], [it.lon + dx, it.lat + dy], [it.lon - dx, it.lat + dy], [it.lon - dx, it.lat - dy]]] };
+  const j = await getJson(`${A.cadastre}?geom=${encodeURIComponent(JSON.stringify(carre))}&_limit=50`);
+  let best = null;
+  for (const f of j.features || []) {
+    const ring = f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates[0][0] : f.geometry.coordinates[0];
+    for (const c of ring) {
+      const d = Math.hypot((c[0] - it.lon) * 80000, (c[1] - it.lat) * 111000);
+      if (!best || d < best.d) best = { d, f };
+    }
+  }
+  return best ? normaliseParcelle(best.f) : null;
+}
+
 // ── Urbanisme (Géoportail de l'urbanisme via API Carto) ──
 export async function zonesUrba(geom) {
   const j = await getJson(`${A.gpu}/zone-urba?geom=${encodeURIComponent(JSON.stringify(geom))}`);

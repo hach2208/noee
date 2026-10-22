@@ -1,7 +1,7 @@
 // Noéé : page Terrain. Sélection de parcelles (additionnées), croquis de division,
 // capacité en logements (repris d'Imoscope), recherche de terrains par surface.
 import { CONFIG } from './config.js';
-import { geocode, parcelleAuPoint, zonesUrba, prescriptions, communeRnu, batimentsDans, routesDans, ventesAutour, parcellesCommune, parcellesDans, adressesCommune, communes } from './api.js';
+import { geocode, parcelleAuPoint, parcellePourAdresse, zonesUrba, prescriptions, communeRnu, batimentsDans, routesDans, ventesAutour, parcellesCommune, parcellesDans, adressesCommune, communes } from './api.js';
 import { reperesTerrain } from './estimate.js';
 import { analyserDivision, reglesPourZone, uniteFonciere } from './division-calc.js';
 import { PROGRAMMES, PART_SOCIALE_DEFAUT, zoneInfo, capacite, bilanPromoteur, chargerRegles, enregistrerRegle } from './programme.js';
@@ -57,16 +57,16 @@ champAdresse($('#adresse'), {
   onChoix: async (it) => {
     map.setView([it.lat, it.lon], 18);
     etat.parcelles = [];
-    await ajouterAuPoint(it.lon, it.lat, it.label);
+    await ajouterAuPoint(it.lon, it.lat, it);
   },
 });
 
 map.on('click', (e) => ajouterAuPoint(e.latlng.lng, e.latlng.lat));
 
-async function ajouterAuPoint(lon, lat) {
+async function ajouterAuPoint(lon, lat, adresse = null) {
   message('Recherche de la parcelle…', 'charge-e');
   let p;
-  try { p = await parcelleAuPoint(lon, lat); } catch { message('Le cadastre ne répond pas. Réessayez dans un instant.', 'ko'); return; }
+  try { p = adresse ? await parcellePourAdresse(adresse) : await parcelleAuPoint(lon, lat); } catch { message('Le cadastre ne répond pas. Réessayez dans un instant.', 'ko'); return; }
   if (!p) { message('Aucune parcelle ici. Zoomez et touchez une parcelle.', 'ko'); return; }
   const idu = p.properties.idu;
   const i = etat.parcelles.findIndex((x) => x.idu === idu);
@@ -585,7 +585,7 @@ $('#form-lead').addEventListener('submit', async (e) => {
   }
   if (lat && lon) {
     map.setView([lat, lon], 18);
-    await ajouterAuPoint(lon, lat);
+    await ajouterAuPoint(lon, lat, { lon, lat, insee: params.insee || null });
   } else {
     map.setView([CONFIG.carte.lat, CONFIG.carte.lon], 16);
   }

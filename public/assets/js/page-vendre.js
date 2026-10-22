@@ -1,5 +1,5 @@
 // Noéé : assistant d'estimation en 7 étapes.
-import { ventesAutour, geocode } from './api.js';
+import { ventesAutour, geocode, parcellePourAdresse, parcelleAuPoint } from './api.js';
 import { estimer } from './estimate.js';
 import { V, distance } from './dvf-core.js';
 import { montageCommun, creerCarte, marqueur, champAdresse, paramsUrl, euro, nombre, dateFr, esc, $, $$, toast, modePerso } from './ui.js';
@@ -34,6 +34,7 @@ async function choisirAdresse(it) {
   cible = marqueur(it.lat, it.lon, 'mk cible').addTo(map);
   map.flyTo([it.lat, it.lon], it.type === 'municipality' ? 14 : 18, { duration: 0.8 });
   ventesP = ventesAutour(it.lat, it.lon, it.insee).catch(() => []);
+  if (it.type !== 'municipality') chercherParcelle(it);
   const rep = $('#repere-ventes');
   rep.hidden = false;
   rep.textContent = 'Lecture des ventes notariées autour…';
@@ -45,6 +46,46 @@ async function choisirAdresse(it) {
     ? `${nombre(proches.length)} ventes notariées à moins d’un kilomètre${plusAncienne ? ` depuis ${dateFr(plusAncienne)}` : ''}.`
     : 'Les ventes de ce secteur ne sont pas encore chargées. Lancez « npm run data » pour les préparer.';
 }
+
+// ── Parcelle cadastrale de l'adresse : surface du terrain préremplie ──
+let calqueParcelle = null;
+let terrainAuto = true;
+$('#terrain').addEventListener('input', () => { terrainAuto = false; });
+
+async function chercherParcelle(it) {
+  const box = $('#parcelle-info');
+  box.hidden = false;
+  box.innerHTML = '<span class="petit">Recherche de la parcelle cadastrale…</span>';
+  try {
+    const p = await parcellePourAdresse(it);
+    if (adresse !== it) return;
+    if (!p) { box.innerHTML = '<span class="petit">Parcelle introuvable à cette adresse. Touchez votre terrain sur la carte.</span>'; return; }
+    poserParcelle(p);
+  } catch {
+    box.innerHTML = '<span class="petit">Le cadastre ne répond pas. Touchez votre terrain sur la carte pour réessayer.</span>';
+  }
+}
+
+function poserParcelle(p) {
+  const L = window.L;
+  const surf = p.properties.contenance;
+  if (calqueParcelle) calqueParcelle.remove();
+  calqueParcelle = L.geoJSON(p, { style: { color: '#c98a12', weight: 3, fillColor: '#c98a12', fillOpacity: 0.15 }, interactive: false }).addTo(map);
+  calqueParcelle.bindTooltip(`${p.properties.section} ${p.properties.numero}<br>${nombre(surf)} m²`, { permanent: true, direction: 'center', className: 'lbl-carte' });
+  map.fitBounds(calqueParcelle.getBounds(), { maxZoom: 19, padding: [30, 30] });
+  if (terrainAuto && surf) $('#terrain').value = surf;
+  etatParcelle = p;
+  $('#parcelle-info').innerHTML = `<b>Parcelle ${p.properties.section} ${p.properties.numero} : ${nombre(surf)} m² de terrain</b><br><span class="petit">Ce n’est pas la bonne ? Touchez votre terrain sur la carte. Plusieurs parcelles ? Ajoutez-les dans <a href="/division/?lat=${adresse?.lat}&lon=${adresse?.lon}">Terrain</a>.</span>`;
+}
+let etatParcelle = null;
+
+map.on('click', async (e) => {
+  if (etape > 3) return;
+  try {
+    const p = await parcelleAuPoint(e.latlng.lng, e.latlng.lat);
+    if (p) { terrainAuto = true; poserParcelle(p); }
+  } catch { toast('Le cadastre ne répond pas.'); }
+});
 
 const type = () => form.type.value;
 
@@ -125,6 +166,7 @@ function valider(n) {
 function lireBien() {
   return {
     adresse: adresse.label, insee: adresse.insee, lat: adresse.lat, lon: adresse.lon,
+    parcelle: etatParcelle ? etatParcelle.properties.idu : null,
     type: type(),
     surf: Number($('#surf').value) || 0,
     pieces: Number($('#pieces').value) || 0,
