@@ -28,6 +28,23 @@ const BASE = 'https://files.data.gouv.fr/geo-dvf/latest/csv';
 
 fs.mkdirSync(path.join(OUT, 'dvf'), { recursive: true });
 
+const GHA = Boolean(process.env.GITHUB_ACTIONS);
+const note = (msg) => console.log(GHA ? `::notice::${msg}` : `  ${msg}`);
+const alerte = (msg) => console.log(GHA ? `::warning::${msg}` : `  ⚠ ${msg}`);
+
+async function fetchRetry(url, essais = 4) {
+  let err;
+  for (let i = 0; i < essais; i++) {
+    try {
+      const r = await fetch(url, { headers: { 'User-Agent': 'noee-build (github.com/hach2208/noee)' } });
+      if (r.ok || r.status === 404) return r;
+      err = new Error(`HTTP ${r.status} sur ${url}`);
+    } catch (e) { err = new Error(`${e.message} sur ${url}`); }
+    await new Promise((res) => setTimeout(res, 2000 * (i + 1)));
+  }
+  throw err;
+}
+
 async function lignesDepuis(stream, gz) {
   const src = gz ? stream.pipe(zlib.createGunzip()) : stream;
   return readline.createInterface({ input: src, crlfDelay: Infinity });
@@ -42,7 +59,7 @@ async function ouvrir(annee, dep) {
     return null;
   }
   const url = `${BASE}/${annee}/departements/${dep}.csv.gz`;
-  const r = await fetch(url);
+  const r = await fetchRetry(url);
   if (!r.ok) return null;
   return lignesDepuis(Readable.fromWeb(r.body), true);
 }
@@ -51,7 +68,7 @@ async function chargerCommunes() {
   if (communesFile) return JSON.parse(fs.readFileSync(communesFile, 'utf8'));
   const toutes = [];
   for (const dep of deps) {
-    const r = await fetch(`https://geo.api.gouv.fr/departements/${dep}/communes?fields=nom,code,codesPostaux,centre,population&format=json`);
+    const r = await fetchRetry(`https://geo.api.gouv.fr/departements/${dep}/communes?fields=nom,code,codesPostaux,centre,population&format=json`);
     if (!r.ok) throw new Error(`geo.api.gouv.fr ${dep} : HTTP ${r.status}`);
     for (const c of await r.json()) {
       toutes.push({ c: c.code, n: c.nom, s: slugify(c.nom), cp: c.codesPostaux || [], x: c.centre?.coordinates?.[0], y: c.centre?.coordinates?.[1], pop: c.population || 0, dep });
@@ -75,23 +92,32 @@ async function main() {
   for (let y = an; y >= an - 8 && annees < nbAnnees; y--) {
     let trouve = false;
     for (const dep of deps) {
-      const rl = await ouvrir(y, dep);
-      if (!rl) continue;
-      trouve = true;
-      let head = null;
       let n = 0;
-      for await (const line of rl) {
-        if (!line) continue;
-        if (!head) { head = splitCsvLine(line); continue; }
-        const cells = splitCsvLine(line);
-        const r = {};
-        for (let j = 0; j < head.length; j++) r[head[j]] = cells[j] ?? '';
+      const lot = [];
+      try {
+        const rl = await ouvrir(y, dep);
+        if (!rl) continue;
+        let head = null;
+        for await (const line of rl) {
+          if (!line) continue;
+          if (!head) { head = splitCsvLine(line); continue; }
+          const cells = splitCsvLine(line);
+          const r = {};
+          for (let j = 0; j < head.length; j++) r[head[j]] = cells[j] ?? '';
+          lot.push(r);
+          n++;
+        }
+      } catch (e) {
+        alerte(`DVF ${y} département ${dep} illisible : ${e.message}`);
+        continue;
+      }
+      trouve = true;
+      for (const r of lot) {
         const code = r.code_commune;
         if (!parCommune.has(code)) parCommune.set(code, []);
         parCommune.get(code).push(r);
-        n++;
       }
-      console.log(`  ${y} · ${dep} : ${n.toLocaleString('fr-FR')} lignes`);
+      note(`DVF ${y}, département ${dep} : ${n.toLocaleString('fr-FR')} lignes`);
     }
     if (trouve) annees++;
   }
@@ -111,8 +137,8 @@ async function main() {
   for (const c of communes) c.ventes = stats[c.c]?.total || 0;
   fs.writeFileSync(path.join(OUT, 'communes.json'), JSON.stringify(communes));
   fs.writeFileSync(path.join(OUT, 'stats.json'), JSON.stringify({ maj, communes: stats }));
-  console.log(`  ${total.toLocaleString('fr-FR')} ventes exploitables dans ${Object.keys(stats).length} communes`);
+  note(`${total.toLocaleString('fr-FR')} ventes exploitables dans ${Object.keys(stats).length} communes (${communes.length} communes listées)`);
   console.log('Terminé. Lancez maintenant : npm run pages');
 }
 
-main().catch((e) => { console.error(e.message); process.exit(1); });
+main().catch((e) => { console.log(GHA ? `::error::${e.message}` : e.message); process.exit(1); });
