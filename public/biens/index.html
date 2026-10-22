@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Biens à vendre | Noéé</title>
+<meta name="description" content="Maisons, appartements et terrains à vendre sur la côte landaise.">
+<meta name="theme-color" content="#0e3b43">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Noéé">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="stylesheet" href="/assets/css/noee.css">
+</head>
+<body data-page="biens">
+<main id="contenu">
+  <section class="bloc">
+    <div class="wrap">
+      <h1>Biens à vendre</h1>
+      <p class="lead">Maisons, appartements et terrains confiés à la vente.</p>
+      <div class="biens" id="biens"><div class="charge">Chargement…</div></div>
+    </div>
+  </section>
+</main>
+<script type="module">
+  import { CONFIG } from '/assets/js/config.js';
+  import { montageCommun, esc, euro, nombre, $ } from '/assets/js/ui.js';
+  montageCommun();
+  const biens = await fetch('/data/biens.json').then((r) => (r.ok ? r.json() : [])).catch(() => []);
+  const M = CONFIG.marque;
+  $('#biens').innerHTML = biens.length
+    ? biens.map((b) => `<article class="bien">
+        <div class="photo" style="background-image:url('${esc(b.photo || '')}')" role="img" aria-label="${esc(b.titre)}"></div>
+        <div class="corps">
+          ${b.statut ? `<span class="statut">${esc(b.statut)}</span>` : ''}
+          <h3>${esc(b.titre)}</h3>
+          <div class="prix">${euro(b.prix)}</div>
+          <p class="petit">${esc(b.ville)}${b.surface ? `, ${nombre(b.surface)} m²` : ''}${b.terrain ? `, terrain ${nombre(b.terrain)} m²` : ''}${b.pieces ? `, ${b.pieces} pièces` : ''}</p>
+          ${b.lien ? `<a href="${esc(b.lien)}">Voir le bien</a>` : ''}
+        </div></article>`).join('')
+    : `<div class="encart info" style="grid-column:1/-1"><h3>Aucun bien en ligne pour l’instant</h3><p>Les nouveautés partent souvent avant d’être publiées. Dites-nous ce que vous cherchez : <a href="tel:${M.telephone.replace(/\s/g, '')}">${esc(M.telephone)}</a>.</p></div>`;
+</script>
+</body>
+</html>

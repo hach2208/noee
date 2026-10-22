@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Prix de l’immobilier par commune | Noéé</title>
+<meta name="description" content="Prix médians au m² des maisons, appartements et terrains, commune par commune, d’après les ventes notariées.">
+<meta name="theme-color" content="#0e3b43">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Noéé">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="stylesheet" href="/assets/css/noee.css">
+</head>
+<body data-page="communes">
+<main id="contenu">
+  <section class="bloc">
+    <div class="wrap">
+      <h1>Prix par commune</h1>
+      <p class="lead">Les médianes de vente de chaque commune, calculées sur les actes notariés. Le chiffre à côté du nom est le nombre de ventes analysées.</p>
+      <div id="liste"><!-- LISTE --><!-- /LISTE --></div>
+    </div>
+  </section>
+</main>
+<script type="module">
+  import { montageCommun, esc, nombre, $ } from '/assets/js/ui.js';
+  montageCommun();
+  // Si les pages n'ont pas encore été générées, on construit la liste à la volée
+  if (!$('#liste a')) {
+    const communes = await fetch('/data/communes.json').then((r) => (r.ok ? r.json() : [])).catch(() => []);
+    const avec = communes.filter((c) => c.ventes >= 5).sort((a, b) => a.n.localeCompare(b.n, 'fr'));
+    $('#liste').innerHTML = avec.length
+      ? `<ul class="communes-liste">${avec.map((c) => `<li><a href="/vendre/?adresse=${encodeURIComponent(c.n)}&lat=${c.y}&lon=${c.x}&insee=${c.c}#estimation">${esc(c.n)}</a> <small>${nombre(c.ventes)}</small></li>`).join('')}</ul>`
+      : '<div class="encart info"><p>Les données ne sont pas encore préparées. Lancez <code>npm run data</code> puis <code>npm run pages</code>.</p></div>';
+  }
+</script>
+</body>
+</html>

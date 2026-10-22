@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Contacts reçus | Noéé</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Noéé">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="stylesheet" href="/assets/css/noee.css">
+</head>
+<body data-page="admin">
+<main id="contenu">
+  <section class="bloc">
+    <div class="wrap">
+      <h1>Contacts reçus</h1>
+      <p class="lead">Copie gardée dans ce navigateur. Les contacts envoyés à Supabase ou au webhook sont aussi dans ces outils.</p>
+      <div class="nav-etapes" style="justify-content:flex-start;gap:12px;margin:0 0 20px">
+        <button class="btn" id="csv" type="button">Exporter en CSV</button>
+        <button class="btn ghost" id="vider" type="button">Vider la liste</button>
+      </div>
+      <div class="table-wrap"><table class="ventes" id="tab"></table></div>
+    </div>
+  </section>
+</main>
+<script type="module">
+  import { montageCommun, esc, euro, $ } from '/assets/js/ui.js';
+  import { leadsLocaux, viderLeadsLocaux } from '/assets/js/leads.js';
+  montageCommun();
+  const cols = [
+    ['Date', (l) => new Date(l.cree_le).toLocaleString('fr-FR')],
+    ['Outil', (l) => l.type],
+    ['Nom', (l) => l.contact?.nom || ''],
+    ['Téléphone', (l) => l.contact?.telephone || ''],
+    ['E-mail', (l) => l.contact?.email || ''],
+    ['Adresse', (l) => l.bien?.adresse || ''],
+    ['Résultat', (l) => l.type === 'estimation' ? (l.resultat?.valeur ? euro(l.resultat.valeur) : '') : (l.resultat ? `${l.resultat.verdict}, ${l.resultat.lots} lot(s)` : '')],
+    ['Délai', (l) => l.bien?.delai || ''],
+    ['Source', (l) => l.utm?.utm_source ? `${l.utm.utm_source} / ${l.utm.utm_campaign || ''}` : ''],
+  ];
+  function rendre() {
+    const leads = leadsLocaux();
+    $('#tab').innerHTML = leads.length
+      ? `<thead><tr>${cols.map((c) => `<th>${c[0]}</th>`).join('')}</tr></thead><tbody>${leads.map((l) => `<tr>${cols.map((c) => `<td>${esc(c[1](l))}</td>`).join('')}</tr>`).join('')}</tbody>`
+      : '<tbody><tr><td>Aucun contact dans ce navigateur. Ils apparaîtront ici dès qu’une estimation ou une étude sera demandée.</td></tr></tbody>';
+  }
+  rendre();
+  $('#csv').onclick = () => {
+    const leads = leadsLocaux();
+    const q = (v) => `"${String(v).replace(/"/g, '""')}"`;
+    const csv = [cols.map((c) => q(c[0])).join(';'), ...leads.map((l) => cols.map((c) => q(c[1](l))).join(';'))].join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = `noee-contacts-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+  };
+  $('#vider').onclick = () => { if (confirm('Vider la liste locale ?')) { viderLeadsLocaux(); rendre(); } };
+</script>
+</body>
+</html>

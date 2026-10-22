@@ -1,0 +1,52 @@
+name: Publier Noéé
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '17 5 3 * *'   # le 3 de chaque mois : ventes DVF remises à jour
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  construire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Adresse du site
+        run: |
+          REPO="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "NOEE_BASE=/${REPO}/" >> "$GITHUB_ENV"
+          echo "NOEE_SITE=https://${OWNER}.github.io/${REPO}" >> "$GITHUB_ENV"
+      - name: Ventes DVF et communes
+        run: npm run data
+      - name: Pages communes et sitemap
+        run: npm run pages
+      - name: Site final
+        run: node scripts/build-site.mjs
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  publier:
+    needs: construire
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploiement.outputs.page_url }}
+    steps:
+      - id: deploiement
+        uses: actions/deploy-pages@v4

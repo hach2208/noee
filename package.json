@@ -1,0 +1,15 @@
+{
+  "name": "noee",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Noéé : estimation immobilière DVF et simulateur de division parcellaire",
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "data": "node scripts/build-data.mjs",
+    "pages": "node scripts/build-pages.mjs",
+    "build": "node scripts/build-data.mjs && node scripts/build-pages.mjs",
+    "test": "node --test"
+  }
+}

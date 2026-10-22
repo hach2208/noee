@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Noéé : vendre au juste prix sur la côte landaise</title>
+<meta name="description" content="Estimation gratuite d’après les ventes notariées, test de division de terrain et suivi de vente à Capbreton, Hossegor, Seignosse et sur toute la côte landaise.">
+<meta property="og:title" content="Noéé : vendre au juste prix sur la côte landaise">
+<meta property="og:description" content="Estimation d’après les ventes réelles du quartier et test de division de terrain, en deux minutes.">
+<meta name="theme-color" content="#0e3b43">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Noéé">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="/assets/css/noee.css">
+</head>
+<body data-page="accueil">
+<main id="contenu">
+  <section class="heros">
+    <div class="carte-fond" id="carte-heros" aria-hidden="true"></div>
+    <div class="wrap">
+      <h1>Vendre au juste prix, d’après les ventes de votre rue.</h1>
+      <p class="lead">Une estimation tirée des actes signés chez le notaire autour de chez vous, un test de division si le terrain est grand, puis un suivi chaque semaine jusqu’à la signature.</p>
+      <form class="champ-adresse" id="form-heros" style="margin-top:28px">
+        <div class="ligne">
+          <label class="sr" for="adr-heros">Adresse du bien</label>
+          <input id="adr-heros" type="text" placeholder="Adresse de votre bien">
+          <button class="btn resine" type="submit">Estimer</button>
+        </div>
+      </form>
+      <ul class="reperes" id="reperes">
+        <li><b>2 min</b>sans inscription, résultat immédiat</li>
+      </ul>
+    </div>
+    <p class="coord">Capbreton, 43°38′ N 1°25′ O<br>Photo aérienne IGN</p>
+  </section>
+
+  <section class="bloc">
+    <div class="wrap">
+      <div class="outils">
+        <a class="outil estimer" href="/vendre/#estimation">
+          <svg class="croquis" viewBox="0 0 280 110" aria-hidden="true">
+            <g fill="none" stroke="#5f8a90" stroke-width="1"><path d="M0 30h280M0 70h280M60 0v110M150 0v110M220 0v110"/></g>
+            <g fill="#c98a12"><circle cx="40" cy="22" r="5"/><circle cx="96" cy="52" r="5"/><circle cx="178" cy="40" r="5"/><circle cx="120" cy="88" r="5"/><circle cx="240" cy="84" r="5"/><circle cx="200" cy="12" r="5"/></g>
+            <circle cx="140" cy="56" r="10" fill="#fff" stroke="#c98a12" stroke-width="4"/>
+          </svg>
+          <h3>Estimer mon bien</h3>
+          <p>On compare votre maison, appartement ou terrain aux ventes de même taille autour de l’adresse, puis on corrige selon l’état, le DPE et les atouts.</p>
+          <div class="bas"><span class="petit" style="color:#b9cfcc">Maison, appartement, terrain</span><span class="btn resine">Commencer</span></div>
+        </a>
+        <a class="outil diviser" href="/division/#simulateur">
+          <svg class="croquis" viewBox="0 0 280 110" aria-hidden="true">
+            <path d="M20 8h240l-14 94H34z" fill="#efe6d4" stroke="#0e3b43" stroke-width="2"/>
+            <rect x="46" y="30" width="62" height="40" fill="#0e3b43"/>
+            <path d="M150 8l-6 94" stroke="#c98a12" stroke-width="3" stroke-dasharray="7 5"/>
+            <rect x="172" y="34" width="56" height="44" fill="#2d5a3d" opacity=".25" stroke="#2d5a3d" stroke-dasharray="4 3"/>
+          </svg>
+          <h3>Tester la division</h3>
+          <p>Cadastre, zone du PLU et maison existante : on calcule si un lot à bâtir peut être détaché et ce qu’il vaut au prix des terrains vendus autour.</p>
+          <div class="bas"><span class="petit">Terrains de plus de 700 m²</span><span class="btn">Tester mon terrain</span></div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="bloc">
+    <div class="wrap sources">
+      <div>
+        <h2>Des chiffres que vous pouvez vérifier</h2>
+        <p>Pas d’algorithme opaque : chaque estimation affiche les ventes utilisées, leur date, leur surface et leur distance. Les sources sont publiques.</p>
+      </div>
+      <dl>
+        <dt>Ventes</dt><dd>Demandes de valeurs foncières (DVF), tenues par la DGFiP à partir des actes notariés.</dd>
+        <dt>Adresses</dt><dd>Base adresse nationale (BAN).</dd>
+        <dt>Parcelles</dt><dd>Cadastre IGN, Parcellaire Express.</dd>
+        <dt>Urbanisme</dt><dd>Géoportail de l’urbanisme : zones et prescriptions des PLU.</dd>
+        <dt>Bâtiments</dt><dd>IGN, BD TOPO.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section class="bloc" id="bloc-communes" hidden>
+    <div class="wrap">
+      <h2>Prix par commune</h2>
+      <p>Les communes où les notaires ont enregistré le plus de ventes.</p>
+      <ul class="communes-liste" id="liste-communes"></ul>
+      <p style="margin-top:20px"><a href="/communes/">Toutes les communes</a></p>
+    </div>
+  </section>
+
+  <section class="bloc">
+    <div class="wrap">
+      <div class="contact">
+        <div>
+          <h2>Vous préférez en parler ?</h2>
+          <p style="margin:0" id="tel-contact"></p>
+        </div>
+        <div class="actions">
+          <a class="btn resine" id="btn-appel" href="#">Appeler</a>
+          <a class="btn ghost" id="btn-wa" href="#" rel="noopener">WhatsApp</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="/vendor/leaflet/leaflet.js"></script>
+<script type="module">
+  import { CONFIG } from '/assets/js/config.js';
+  import { montageCommun, creerCarte, champAdresse, paramsUrl, nombre, esc, $ } from '/assets/js/ui.js';
+
+  montageCommun();
+  paramsUrl();
+  const M = CONFIG.marque;
+  $('#tel-contact').textContent = `${M.telephone}, du lundi au samedi.`;
+  $('#btn-appel').href = `tel:${M.telephone.replace(/\s/g, '')}`;
+  $('#btn-wa').href = `https://wa.me/${M.telephoneIntl}`;
+
+  // Photo aérienne en fond, qui glisse lentement le long du littoral
+  const { map } = creerCarte($('#carte-heros'), { lat: 43.6455, lon: -1.4405, zoom: 16, interactive: false, cadastre: true });
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    setTimeout(() => map.panTo([43.6520, -1.4345], { animate: true, duration: 40, easeLinearity: 1 }), 600);
+  }
+
+  const go = (it) => {
+    const p = new URLSearchParams({ adresse: it.label, lat: it.lat, lon: it.lon, insee: it.insee });
+    location.href = `/vendre/?${p}#estimation`;
+  };
+  const adr = champAdresse($('#adr-heros'), { onChoix: go });
+  $('#form-heros').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try { const it = adr.valeur || await adr.premier(); if (it) go(it); else location.href = '/vendre/#estimation'; }
+    catch { location.href = '/vendre/#estimation'; }
+  });
+
+  // Repères et communes, si les données ont été préparées (npm run data)
+  try {
+    const [stats, communes] = await Promise.all([
+      fetch('/data/stats.json').then((r) => r.ok ? r.json() : null),
+      fetch('/data/communes.json').then((r) => r.ok ? r.json() : []),
+    ]);
+    if (stats) {
+      const vals = Object.values(stats.communes);
+      const total = vals.reduce((a, s) => a + s.total, 0);
+      const an = vals.reduce((a, s) => a + Object.values(s.types).reduce((b, t) => b + t.n12, 0), 0);
+      $('#reperes').insertAdjacentHTML('afterbegin', `<li><b>${nombre(total)}</b>ventes notariées analysées</li><li><b>${nombre(an)}</b>signées sur les 12 derniers mois</li>`);
+    }
+    const top = communes.filter((c) => c.ventes >= 5).sort((a, b) => b.ventes - a.ventes).slice(0, 24).sort((a, b) => a.n.localeCompare(b.n, 'fr'));
+    if (top.length) {
+      $('#liste-communes').innerHTML = top.map((c) => `<li><a href="/vendre/${c.s}/">${esc(c.n)}</a></li>`).join('');
+      $('#bloc-communes').hidden = false;
+    }
+  } catch { /* données pas encore préparées */ }
+</script>
+</body>
+</html>
